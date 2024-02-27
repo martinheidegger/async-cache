@@ -1,0 +1,29 @@
+{
+  "name": "@leichtgewicht/async-cache",
+  "version": "1.0.0",
+  "description": "Simple, fast, no-dependency cache for async calls.",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    "default": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "node test.js",
+    "lint": "standard"
+  },
+  "keywords": [
+    "cache",
+    "async",
+    "lru"
+  ],
+  "author": "Martin Heidegger <martin.heidegger@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "standard": "^17.1.0"
+  },
+  "types": "./index.d.ts",
+  "dependencies": {}
+}

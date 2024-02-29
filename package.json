@@ -1,6 +1,6 @@
 {
   "name": "@leichtgewicht/async-cache",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Simple, fast, no-dependency cache for async calls.",
   "main": "index.js",
   "type": "module",

@@ -9,6 +9,12 @@ test('simple resolve', async () => {
   })
   assert.equal(await cache.get('world'), 'hello world')
 })
+test('invalid params', async () => {
+  assert.throws(() => createCache({}), new Error('maxSize needs to be a number greater or equal 0'))
+  assert.throws(() => createCache({ maxSize: -1 }), new Error('maxSize needs to be a number greater or equal 0'))
+  assert.throws(() => createCache({ maxSize: 1, maxAgeMs: 0 }), new Error('maxAgeMs needs to be a number greater 0'))
+  assert.throws(() => createCache({ maxSize: 1, maxAgeMs: 'hi' }), new Error('maxAgeMs needs to be a number greater 0'))
+})
 test('parallel resolve', async () => {
   let count = 0
   const cache = createCache({
@@ -52,21 +58,34 @@ test('maxSize of results', async () => {
   assert.deepEqual(calls, ['a', 'b', 'a'])
 })
 test('expiration date', async () => {
-  const counter = {}
+  let count = 0
   const cache = createCache({
     async resolver (key) {
-      let count = counter[key]
-      count = count === undefined ? 1 : count + 1
-      counter[key] = count
-      return `hello ${key} ${count}`
+      count += 1
+      return `${key}:${count}`
     },
-    maxSize: 1,
+    maxSize: 2,
     maxAgeMs: 10
   })
-  assert.equal(await cache.get('a'), 'hello a 1')
-  assert.equal(await cache.get('a'), 'hello a 1')
+  assert.equal(await cache.get('a'), 'a:1')
+  assert.equal(await cache.get('a'), 'a:1')
   await new Promise((resolve) => setTimeout(resolve, 20))
-  assert.equal(await cache.get('a'), 'hello a 2')
+  assert.equal(await cache.get('a'), 'a:2')
+})
+test('expiration date of errors', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      throw new Error(`${key}:${count}`)
+    },
+    maxSize: 2,
+    maxAgeMs: 10
+  })
+  assert.rejects(cache.get('a'), new Error('a:1'))
+  assert.rejects(cache.get('a'), new Error('a:1'))
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.rejects(cache.get('a'), new Error('a:2'))
 })
 test('clear', async () => {
   let count = 0
@@ -81,4 +100,81 @@ test('clear', async () => {
   cache.clear()
   assert.deepEqual(await cache.get('world'), 'hello world')
   assert.equal(count, 2)
+})
+test('even with max-size 0 it will return the previous request', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      const res = `${key}:${count}`
+      await new Promise(resolve => setTimeout(resolve, 10))
+      return res
+    },
+    maxSize: 0
+  })
+  cache.get('a')
+  assert.deepEqual(await Promise.all([
+    cache.get('b'),
+    cache.get('a')
+  ]), ['b:2', 'a:1'])
+})
+test('even with max-size 1 it will return the previous request', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      const res = `${key}:${count}`
+      await new Promise(resolve => setTimeout(resolve, 10))
+      return res
+    },
+    maxSize: 1
+  })
+  cache.get('a')
+  assert.deepEqual(await Promise.all([
+    cache.get('b'),
+    cache.get('a')
+  ]), ['b:2', 'a:1'])
+})
+test('removed before expire', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      return `${key}:${count}`
+    },
+    maxSize: 2,
+    maxAgeMs: 10
+  })
+  assert.equal(await cache.get('a'), 'a:1')
+  cache.remove('a')
+  assert.equal(await cache.get('a'), 'a:2')
+})
+test('removed extra before expire', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      return `${key}:${count}`
+    },
+    maxSize: 1
+  })
+  assert.equal(await cache.get('a'), 'a:1')
+  assert.equal(await cache.get('b'), 'b:2')
+  cache.remove('b') // line coverage!
+  assert.equal(await cache.get('b'), 'b:3')
+})
+test('active requests get cleared as well', async () => {
+  let count = 0
+  const cache = createCache({
+    async resolver (key) {
+      count += 1
+      const res = `${key}:${count}`
+      await setTimeout(resolve => setTimeout(resolve, 10))
+      return res
+    },
+    maxSize: 0
+  })
+  cache.get('a')
+  cache.remove('a')
+  assert.equal(await cache.get('a'), 'a:2')
 })

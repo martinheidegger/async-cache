@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "test": "node test.js",
+    "test": "c8 node test.js",
     "lint": "standard"
   },
   "keywords": [
@@ -22,8 +22,8 @@
   "author": "Martin Heidegger <martin.heidegger@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "c8": "^9.1.0",
     "standard": "^17.1.0"
   },
-  "types": "./index.d.ts",
-  "dependencies": {}
+  "types": "./index.d.ts"
 }
